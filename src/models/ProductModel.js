@@ -36,6 +36,10 @@ const productSchema = new Schema(
       type: String,
       required: true
     },
+    product_sold: {
+      type: Boolean,
+      required: true
+    }
   },
   {
     timestamps: true,

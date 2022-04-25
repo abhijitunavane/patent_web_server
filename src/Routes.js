@@ -125,7 +125,9 @@ router.post("/updateManufacturer", async (req, res) => {
 router.post("/addProduct", async (req, res) => {
   var reqbody = req.body;
 
-  await ProductModel.findOne().sort({$natural: -1})
+  reqbody["product_sold"] = false;
+
+  await ProductModel.findOne().sort({ $natural: -1 })
     .then((prevProduct) => {
       if (prevProduct) {
         var currProductObj = reqbody;
@@ -134,7 +136,7 @@ router.post("/addProduct", async (req, res) => {
         currProductObj["product_id"] = prevProduct["product_hash"];
 
         var currentProductHash = SHA256(JSON.stringify(currProductObj));
-        
+
         currProductObj["product_hash"] = currentProductHash.toString();
 
         // Create model of the product
@@ -143,7 +145,7 @@ router.post("/addProduct", async (req, res) => {
         // Save the model to the database
         newProduct
           .save()
-          .then(res.send(currProductObj["product_hash"])) // Response
+          .then(res.send(currProductObj["product_id"])) // Response
           .catch((err) => {
             res.send(`Error: ${err}`);
           });
@@ -151,10 +153,10 @@ router.post("/addProduct", async (req, res) => {
         // "No previous hash == 1st product"
         var currProductObj = reqbody;
 
-        currProductObj["product_id"] = SHA256(JSON.stringify(currProductObj)); 
+        currProductObj["product_id"] = SHA256(JSON.stringify(currProductObj));
 
         var currentProductHash = SHA256(JSON.stringify(currProductObj));
-        
+
         currProductObj["product_hash"] = currentProductHash.toString();
 
         // Create model of the product
@@ -163,7 +165,7 @@ router.post("/addProduct", async (req, res) => {
         // Save the model to the database
         newProduct
           .save()
-          .then(res.send(currProductObj["product_hash"])) // Response
+          .then(res.send(currProductObj["product_id"].toString())) // Response
           .catch((err) => {
             res.send(`Error: ${err}`);
           });
@@ -172,8 +174,6 @@ router.post("/addProduct", async (req, res) => {
     .catch((err) => {
       res.send(err);
     });
-
-
 });
 
 // Get Products
@@ -181,7 +181,7 @@ router.get("/getProducts", async (req, res) => {
   await ProductModel.find()
     .then((products) => {
       if (products.length) {
-        res.json({products});
+        res.json({ products });
       } else {
         res.send(`No products Found!`);
       }
@@ -190,6 +190,38 @@ router.get("/getProducts", async (req, res) => {
       res.send(err);
     });
 });
+
+// Add Product
+router.post("/checkIfProductSold", async (req, res) => {
+  var reqbody = req.body;
+
+  await ProductModel.findOne({ product_id: req.body.product_id })
+    .then((product) => {
+      if (product) {
+        if (product["product_sold"] === false) {
+          ProductModel.updateOne({ product_id: req.body.product_id }, { product_sold: true })
+            .then((sold_product) => {
+              if (sold_product) {
+                res.json({ "Sold": true });
+              } else {
+                res.json({ "Sold": null });
+              }
+            })
+            .catch((err) => {
+              res.send(err);
+            });
+        } else {
+          res.json({ "Sold": true });
+        }
+      } else {
+        res.json({ "Sold": null });
+      }
+    })
+    .catch((err) => {
+      res.send(err);
+    });
+});
+
 
 
 export default router;
